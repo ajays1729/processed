@@ -1,16 +1,13 @@
 from flask import Flask, request, jsonify
-import fitz  
+from pdfminer.high_level import extract_text
 from docx import Document
 import io
 
 app = Flask(__name__)
 
 def parse_pdf(file_stream):
-    text = ""
-    pdf_document = fitz.open(stream=file_stream, filetype="pdf")
-    for page_num in range(pdf_document.page_count):
-        page = pdf_document.load_page(page_num)
-        text += page.get_text()
+    file_stream.seek(0)  # Ensure we're at the start of the file
+    text = extract_text(file_stream)
     return {"type": "pdf", "content": text}
 
 def parse_docx(file_stream):
@@ -30,7 +27,7 @@ def parse_document():
     
     try:
         # Attempt to parse as PDF
-        return jsonify(parse_pdf(file_buffer))
+        return jsonify(parse_pdf(io.BytesIO(file_buffer)))
     except Exception as e:
         # If PDF parsing fails, try DOCX parsing
         try:
