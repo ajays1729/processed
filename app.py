@@ -1,3 +1,4 @@
+import os
 from flask import Flask, request, jsonify
 from pdfminer.high_level import extract_text
 from docx import Document
@@ -36,4 +37,5 @@ def parse_document():
             return jsonify({"error": "Unsupported file type"}), 400
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    port = int(os.environ.get('PORT', 5000))
+    app.run(debug=True, host='0.0.0.0', port=port)
