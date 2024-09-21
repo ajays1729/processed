@@ -3,13 +3,13 @@ from flask import Flask, request, jsonify
 from pdfminer.high_level import extract_text
 from docx import Document
 import io
-import textract
+import subprocess
 import tempfile
 
 app = Flask(__name__)
 
 def parse_pdf(file_stream):
-    file_stream.seek(0)
+    file_stream.seek(0)  # Ensure we're at the start of the file
     text = extract_text(file_stream)
     return {"type": "pdf", "content": text}
 
@@ -26,9 +26,20 @@ def parse_doc(file_stream):
         tmp_file_path = tmp_file.name
 
     try:
-        text = textract.process(tmp_file_path).decode('utf-8')
+        # Use antiword to extract text from the .doc file
+        result = subprocess.run(
+            ['antiword', tmp_file_path],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=True
+        )
+        text = result.stdout.decode('utf-8')
+    except subprocess.CalledProcessError as e:
+        error_msg = e.stderr.decode('utf-8')
+        return {"error": f"Failed to parse .doc file: {error_msg}"}
     finally:
-        os.unlink(tmp_file_path)
+        os.unlink(tmp_file_path)  # Clean up the temporary file
+
     return {"type": "doc", "content": text}
 
 @app.route('/parse', methods=['POST'])
@@ -37,6 +48,9 @@ def parse_document():
         return jsonify({"error": "No file provided"}), 400
 
     file = request.files['file']
+    if not file.filename:
+        return jsonify({"error": "No file selected"}), 400
+
     file_buffer = file.read()
     file_extension = os.path.splitext(file.filename)[1].lower()
 
@@ -58,4 +72,4 @@ def parse_document():
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
-    app.run(debug=True, host='0.0.0.0', port=port)
+    app.run(debug=False, host='0.0.0.0', port=port)
