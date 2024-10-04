@@ -45,7 +45,7 @@ def parse_doc(file_stream):
     finally:
         if os.path.exists(tmp_doc_path):
             os.unlink(tmp_doc_path)
-        if os.path.exists(docx_path):
+        if docx_path and os.path.exists(docx_path):
             os.unlink(docx_path)
 
 def evaluate_candidate(candidate_data):
@@ -172,41 +172,44 @@ def evaluate_candidate(candidate_data):
 @app.route('/parse', methods=['POST'])
 def parse_document():
     response_data = {}
+    parsing_result = {}
+    candidate_result = {}
+
     if 'file' in request.files:
         file = request.files['file']
         if not file.filename:
-            response_data["file_error"] = "No file selected"
+            parsing_result["file_error"] = "No file selected"
         else:
             file_buffer = file.read()
             file_extension = os.path.splitext(file.filename)[1].lower()
 
             if not file_extension:
-                response_data["file_error"] = "File has no extension"
+                parsing_result["file_error"] = "File has no extension"
             else:
                 try:
                     file_stream = io.BytesIO(file_buffer)
                     if file_extension == '.pdf':
-                        response_data["file_result"] = parse_pdf(file_stream)
+                        parsing_result = parse_pdf(file_stream)
                     elif file_extension == '.docx':
-                        response_data["file_result"] = parse_docx(file_stream)
+                        parsing_result = parse_docx(file_stream)
                     elif file_extension == '.doc':
-                        response_data["file_result"] = parse_doc(file_stream)
+                        parsing_result = parse_doc(file_stream)
                     else:
-                        response_data["file_error"] = "Unsupported file type"
+                        parsing_result["file_error"] = "Unsupported file type"
                 except Exception as e:
-                    response_data["file_error"] = f"Error processing file: {str(e)}"
+                    parsing_result["file_error"] = f"Error processing file: {str(e)}"
 
     if 'candidate_data' in request.form:
         candidate_data = request.form['candidate_data']
         try:
-            response_data["candidate_result"] = evaluate_candidate(candidate_data)
+            candidate_result = evaluate_candidate(candidate_data)
         except Exception as e:
-            response_data["candidate_error"] = f"Error processing candidate data: {str(e)}"
+            candidate_result["candidate_error"] = f"Error processing candidate data: {str(e)}"
 
-    if not response_data:
+    if not parsing_result and not candidate_result:
         return jsonify({"error": "No file or candidate data provided"}), 400
 
-    return jsonify(response_data)
+    return jsonify({"parsing_result": parsing_result, "candidate_result": candidate_result})
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
