@@ -237,4 +237,24 @@ def parse_document():
                         parsing_result = parse_doc(file_stream)
                     else:
                         parsing_result["file_error"] = "Unsupported file type"
-                        print("
+                        print("Unsupported file type")
+                except Exception as e:
+                    parsing_result["file_error"] = f"Error processing file: {str(e)}"
+                    print(f"Error processing file: {e}")
+
+    if 'candidate_data' in request.form:
+        candidate_data = request.form['candidate_data']
+        try:
+            candidate_result = evaluate_candidate(candidate_data)
+        except Exception as e:
+            candidate_result = {"error": f"Error evaluating candidate: {str(e)}"}
+            print(f"Error evaluating candidate: {e}")
+
+    response_data["parsing_result"] = parsing_result
+    response_data["candidate_result"] = candidate_result
+
+    return jsonify(response_data)
+
+if __name__ == '__main__':
+    port = int(os.environ.get('PORT', 5000))
+    app.run(debug=False, host='0.0.0.0', port=port)
