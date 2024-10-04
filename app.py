@@ -59,14 +59,21 @@ def evaluate_candidate(candidate_data):
         # Remove trailing spaces from all keys in the candidate data
         candidate_data = {key.strip(): value for key, value in candidate_data.items()}
 
-        # Compare skills for each type separately
-        ideal_mandatory_skills = set(str(candidate_data.get("Ideal Mandatory Skills", "")).split(', '))
-        ideal_critical_skills = set(str(candidate_data.get("Ideal Critical Skills", "")).split(', '))
-        ideal_secondary_skills = set(str(candidate_data.get("Ideal Secondary Skills", "")).split(', '))
+        # Extract skills ensuring they are treated correctly as lists of strings
+        def extract_skills(skill_data):
+            if isinstance(skill_data, list):
+                return set(skill.strip() for skill in skill_data if isinstance(skill, str))
+            elif isinstance(skill_data, str):
+                return set(filter(None, skill_data.split(', ')))
+            return set()
 
-        mandatory_skills = set(str(candidate_data.get("Mandatory Skills", "")).split(', '))
-        critical_skills = set(str(candidate_data.get("Critical Skills", "")).split(', '))
-        secondary_skills = set(str(candidate_data.get("Secondary Skills", "")).split(', '))
+        ideal_mandatory_skills = extract_skills(candidate_data.get("Ideal Mandatory Skills", ""))
+        ideal_critical_skills = extract_skills(candidate_data.get("Ideal Critical Skills", ""))
+        ideal_secondary_skills = extract_skills(candidate_data.get("Ideal Secondary Skills", ""))
+
+        mandatory_skills = extract_skills(candidate_data.get("Mandatory Skills", ""))
+        critical_skills = extract_skills(candidate_data.get("Critical Skills", ""))
+        secondary_skills = extract_skills(candidate_data.get("Secondary Skills", ""))
 
         if not all(isinstance(skill, str) for skill in mandatory_skills.union(critical_skills, secondary_skills)):
             raise ValueError("Skills must be provided as strings.")
@@ -86,87 +93,24 @@ def evaluate_candidate(candidate_data):
         missing_secondary_skills = list(ideal_secondary_skills - secondary_skills)
         secondary_match_percentage = (len(found_secondary_skills) / len(ideal_secondary_skills)) * 100 if ideal_secondary_skills else 0
 
-        # Salary alignment check
-        current_salary_high_range = candidate_data.get("Salary_High Range", None)
-        expected_salary = candidate_data.get("Expected Salary", None)
-
-        if not isinstance(current_salary_high_range, (int, float)) or not isinstance(expected_salary, (int, float)):
-            raise ValueError("Salary information must be numeric.")
-
-        if expected_salary <= 100:
-            expected_salary *= 100000
-
-        if expected_salary <= current_salary_high_range:
-            salary_alignment = "Aligned"
-        else:
-            current_salary_high_range += 300000
-            if expected_salary == current_salary_high_range:
-                salary_alignment = "Adjusted"
-            else:
-                salary_alignment = "Not Aligned"
-                negotiable_salary = expected_salary * 0.3 + expected_salary
-                if negotiable_salary <= current_salary_high_range:
-                    salary_alignment = "Negotiable"
-
-        # Years of experience alignment check
-        ideal_years_of_experience = candidate_data.get("Ideal Years of Experience", None)
-        years_of_experience = candidate_data.get("Years of Experience", None)
-
-        if not isinstance(ideal_years_of_experience, int) or not isinstance(years_of_experience, int):
-            raise ValueError("Years of experience must be integers.")
-
-        if years_of_experience >= ideal_years_of_experience:
-            experience_alignment = "Aligned"
-        elif years_of_experience == ideal_years_of_experience - 1:
-            experience_alignment = "Adjusted"
-        else:
-            experience_alignment = "Not Aligned"
-
-        # Availability alignment check
-        available_in_days = candidate_data.get("Available In Number of Days", None)
-
-        if not isinstance(available_in_days, int):
-            raise ValueError("Availability information must be an integer.")
-
-        if 0 <= available_in_days <= 30:
-            availability_alignment = "Aligned"
-        else:
-            availability_alignment = "Not Aligned"
-
-        # Fit/Not Fit determination
-        fit_status = "Fit"
-        if critical_match_percentage < 100:
-            fit_status = "Not Fit"
-        elif mandatory_match_percentage < 85:
-            fit_status = "Not Fit"
-        elif salary_alignment not in ["Aligned", "Adjusted", "Negotiable"]:
-            fit_status = "Not Fit"
-        elif experience_alignment not in ["Aligned", "Adjusted"]:
-            fit_status = "Not Fit"
-        elif availability_alignment not in ["Aligned", "Adjusted"]:
-            fit_status = "Not Fit"
-
-        # Ensure fit status is included in the output
+        # Return the result as a dictionary
         result = {
+            "Ideal Mandatory Skills": list(ideal_mandatory_skills),
             "Found Mandatory Skills": found_mandatory_skills,
             "Missing Mandatory Skills": missing_mandatory_skills,
             "Mandatory Match Percentage": mandatory_match_percentage,
+            "Ideal Critical Skills": list(ideal_critical_skills),
             "Found Critical Skills": found_critical_skills,
             "Missing Critical Skills": missing_critical_skills,
             "Critical Match Percentage": critical_match_percentage,
+            "Ideal Secondary Skills": list(ideal_secondary_skills),
             "Found Secondary Skills": found_secondary_skills,
             "Missing Secondary Skills": missing_secondary_skills,
-            "Secondary Match Percentage": secondary_match_percentage,
-            "Salary Alignment": salary_alignment,
-            "Experience Alignment": experience_alignment,
-            "Availability Alignment": availability_alignment,
-            "Fit Status": fit_status
+            "Secondary Match Percentage": secondary_match_percentage
         }
 
         return result
 
-    except KeyError as e:
-        return {"Error": f"Missing key in candidate data: {str(e)}"}
     except ValueError as e:
         return {"Error": str(e)}
     except json.JSONDecodeError as e:
