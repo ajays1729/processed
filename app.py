@@ -56,6 +56,9 @@ def evaluate_candidate(candidate_data):
         if not isinstance(candidate_data, dict):
             raise ValueError("Candidate data must be a dictionary.")
 
+        # Remove trailing spaces from all keys in the candidate data
+        candidate_data = {key.strip(): value for key, value in candidate_data.items()}
+
         # Compare skills for each type separately
         ideal_mandatory_skills = set(str(candidate_data.get("Ideal Mandatory Skills", "")).split(', '))
         ideal_critical_skills = set(str(candidate_data.get("Ideal Critical Skills", "")).split(', '))
