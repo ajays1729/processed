@@ -203,8 +203,10 @@ def parse_document():
                     parsing_result["file_error"] = f"Error processing file: {str(e)}"
 
     if 'candidate_data' in request.form:
-        candidate_data = request.form['candidate_data']
+        candidate_data_str = request.form['candidate_data']
         try:
+            # Load the JSON string inside the candidate_data
+            candidate_data = json.loads(candidate_data_str)
             candidate_result = evaluate_candidate(candidate_data)
         except Exception as e:
             candidate_result["candidate_error"] = f"Error processing candidate data: {str(e)}"
