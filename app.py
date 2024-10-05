@@ -103,23 +103,35 @@ def evaluate_candidate(candidate_data):
         if not all(isinstance(skill, str) for skill in mandatory_skills.union(critical_skills, secondary_skills)):
             raise ValueError("Skills must be provided as strings.")
 
-        # Mandatory skills match
-        found_mandatory_skills = list(mandatory_skills.intersection(ideal_mandatory_skills))
-        missing_mandatory_skills = list(ideal_mandatory_skills - mandatory_skills)
-        mandatory_match_percentage = (len(found_mandatory_skills) / len(ideal_mandatory_skills)) * 100 if ideal_mandatory_skills else 0
-        print(f"Mandatory skills match: {mandatory_match_percentage}%")
-
         # Critical skills match
         found_critical_skills = list(critical_skills.intersection(ideal_critical_skills))
         missing_critical_skills = list(ideal_critical_skills - critical_skills)
-        critical_match_percentage = (len(found_critical_skills) / len(ideal_critical_skills)) * 100 if ideal_critical_skills else 0
-        print(f"Critical skills match: {critical_match_percentage}%")
+        critical_match_count = len(found_critical_skills)
+        print(f"Critical skills match: {critical_match_count}/{len(ideal_critical_skills)}")
+
+        # If not all critical skills are matched, candidate is not fit
+        if critical_match_count < len(ideal_critical_skills):
+            fit_status = "Not Fit"
+            print(f"Final fit status: {fit_status} due to missing critical skills")
+            return {"Fit Status": fit_status}
+
+        # Mandatory skills match
+        found_mandatory_skills = list(mandatory_skills.intersection(ideal_mandatory_skills))
+        missing_mandatory_skills = list(ideal_mandatory_skills - mandatory_skills)
+        mandatory_match_count = len(found_mandatory_skills)
+        print(f"Mandatory skills match: {mandatory_match_count}/{len(ideal_mandatory_skills)}")
+
+        # Allow up to 2-4 missing mandatory skills
+        if len(missing_mandatory_skills) > 4:
+            fit_status = "Not Fit"
+            print(f"Final fit status: {fit_status} due to too many missing mandatory skills")
+            return {"Fit Status": fit_status}
 
         # Secondary skills match
         found_secondary_skills = list(secondary_skills.intersection(ideal_secondary_skills))
         missing_secondary_skills = list(ideal_secondary_skills - secondary_skills)
-        secondary_match_percentage = (len(found_secondary_skills) / len(ideal_secondary_skills)) * 100 if ideal_secondary_skills else 0
-        print(f"Secondary skills match: {secondary_match_percentage}%")
+        secondary_match_count = len(found_secondary_skills)
+        print(f"Secondary skills match: {secondary_match_count}/{len(ideal_secondary_skills)}")
 
         # Salary alignment check
         current_salary_high_range = candidate_data.get("Salary_High Range")
@@ -127,6 +139,8 @@ def evaluate_candidate(candidate_data):
 
         salary_alignment = "Not Available"
         if current_salary_high_range is not None and expected_salary is not None:
+            if expected_salary <= 100:
+                expected_salary *= 100000
             if expected_salary <= current_salary_high_range:
                 salary_alignment = "Aligned"
             else:
@@ -164,11 +178,7 @@ def evaluate_candidate(candidate_data):
 
         # Fit/Not Fit determination
         fit_status = "Fit"
-        if critical_match_percentage < 100:
-            fit_status = "Not Fit"
-        elif mandatory_match_percentage < 85:
-            fit_status = "Not Fit"
-        elif salary_alignment != "Aligned" and salary_alignment != "Adjusted":
+        if salary_alignment != "Aligned" and salary_alignment != "Adjusted":
             fit_status = "Not Fit"
         elif experience_alignment != "Aligned" and experience_alignment != "Adjusted":
             fit_status = "Not Fit"
@@ -181,15 +191,15 @@ def evaluate_candidate(candidate_data):
             "Ideal Mandatory Skills": list(ideal_mandatory_skills),
             "Found Mandatory Skills": found_mandatory_skills,
             "Missing Mandatory Skills": missing_mandatory_skills,
-            "Mandatory Match Percentage": mandatory_match_percentage,
+            "Mandatory Match": f"{mandatory_match_count}/{len(ideal_mandatory_skills)}",
             "Ideal Critical Skills": list(ideal_critical_skills),
             "Found Critical Skills": found_critical_skills,
             "Missing Critical Skills": missing_critical_skills,
-            "Critical Match Percentage": critical_match_percentage,
+            "Critical Match": f"{critical_match_count}/{len(ideal_critical_skills)}",
             "Ideal Secondary Skills": list(ideal_secondary_skills),
             "Found Secondary Skills": found_secondary_skills,
             "Missing Secondary Skills": missing_secondary_skills,
-            "Secondary Match Percentage": secondary_match_percentage,
+            "Secondary Match": f"{secondary_match_count}/{len(ideal_secondary_skills)}",
             "Salary Alignment": salary_alignment,
             "Experience Alignment": experience_alignment,
             "Availability Alignment": availability_alignment,
