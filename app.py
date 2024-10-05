@@ -125,55 +125,55 @@ def evaluate_candidate(candidate_data):
         current_salary_high_range = candidate_data.get("Salary_High Range")
         expected_salary = candidate_data.get("Expected Salary")
 
-        salary_alignment = ["Not Available"]
+        salary_alignment = "Not Available"
         if current_salary_high_range is not None and expected_salary is not None:
             if expected_salary <= current_salary_high_range:
-                salary_alignment = ["Aligned"]
+                salary_alignment = "Aligned"
             else:
                 current_salary_high_range += 300000  # Adjust for wiggle room
                 if expected_salary <= current_salary_high_range:
-                    salary_alignment = ["Adjusted"]
+                    salary_alignment = "Adjusted"
                 else:
-                    salary_alignment = ["Not Aligned"]
+                    salary_alignment = "Not Aligned"
         print(f"Salary alignment: {salary_alignment}")
 
         # Years of experience alignment check
         ideal_years_of_experience = candidate_data.get("Ideal Years of Experience")
         years_of_experience = candidate_data.get("Years of Experience")
 
-        experience_alignment = ["Not Available"]
+        experience_alignment = "Not Available"
         if ideal_years_of_experience is not None and years_of_experience is not None:
             if years_of_experience >= ideal_years_of_experience:
-                experience_alignment = ["Aligned"]
+                experience_alignment = "Aligned"
             elif years_of_experience >= ideal_years_of_experience - 1:
-                experience_alignment = ["Adjusted"]
+                experience_alignment = "Adjusted"
             else:
-                experience_alignment = ["Not Aligned"]
+                experience_alignment = "Not Aligned"
         print(f"Years of experience alignment: {experience_alignment}")
 
         # Availability alignment check
         available_in_days = candidate_data.get("Available In Number of Days")
 
-        availability_alignment = ["Not Available"]
+        availability_alignment = "Not Available"
         if available_in_days is not None:
             if 0 <= available_in_days <= 30:
-                availability_alignment = ["Aligned"]
+                availability_alignment = "Aligned"
             else:
-                availability_alignment = ["Not Aligned"]
+                availability_alignment = "Not Aligned"
         print(f"Availability alignment: {availability_alignment}")
 
         # Fit/Not Fit determination
-        fit_status = ["Fit"]
+        fit_status = "Fit"
         if critical_match_percentage < 100:
-            fit_status = ["Not Fit"]
+            fit_status = "Not Fit"
         elif mandatory_match_percentage < 85:
-            fit_status = ["Not Fit"]
-        elif salary_alignment != ["Aligned"] and salary_alignment != ["Adjusted"]:
-            fit_status = ["Not Fit"]
-        elif experience_alignment != ["Aligned"] and experience_alignment != ["Adjusted"]:
-            fit_status = ["Not Fit"]
-        elif availability_alignment != ["Aligned"]:
-            fit_status = ["Not Fit"]
+            fit_status = "Not Fit"
+        elif salary_alignment != "Aligned" and salary_alignment != "Adjusted":
+            fit_status = "Not Fit"
+        elif experience_alignment != "Aligned" and experience_alignment != "Adjusted":
+            fit_status = "Not Fit"
+        elif availability_alignment != "Aligned":
+            fit_status = "Not Fit"
         print(f"Final fit status: {fit_status}")
 
         # Return the result as a dictionary
