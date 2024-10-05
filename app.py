@@ -109,46 +109,11 @@ def evaluate_candidate(candidate_data):
         critical_match_count = len(found_critical_skills)
         print(f"Critical skills match: {critical_match_count}/{len(ideal_critical_skills)}")
 
-        # If not all critical skills are matched, candidate is not fit
-        if critical_match_count < len(ideal_critical_skills):
-            fit_status = "Not Fit"
-            print(f"Final fit status: {fit_status} due to missing critical skills")
-            result = {
-                "Fit Status": fit_status,
-                "Ideal Mandatory Skills": list(ideal_mandatory_skills),
-                "Found Mandatory Skills": found_mandatory_skills,
-                "Missing Mandatory Skills": missing_mandatory_skills,
-                "Mandatory Match": f"{mandatory_match_count}/{len(ideal_mandatory_skills)}",
-                "Ideal Critical Skills": list(ideal_critical_skills),
-                "Found Critical Skills": found_critical_skills,
-                "Missing Critical Skills": missing_critical_skills,
-                "Critical Match": f"{critical_match_count}/{len(ideal_critical_skills)}",
-                "Ideal Secondary Skills": list(ideal_secondary_skills),
-                "Found Secondary Skills": found_secondary_skills,
-                "Missing Secondary Skills": missing_secondary_skills,
-                "Secondary Match": f"{secondary_match_count}/{len(ideal_secondary_skills)}",
-                "Salary Alignment": salary_alignment,
-                "Experience Alignment": experience_alignment,
-                "Availability Alignment": availability_alignment
-            }
-            return result
-
         # Mandatory skills match
         found_mandatory_skills = list(mandatory_skills.intersection(ideal_mandatory_skills))
         missing_mandatory_skills = list(ideal_mandatory_skills - mandatory_skills)
         mandatory_match_count = len(found_mandatory_skills)
         print(f"Mandatory skills match: {mandatory_match_count}/{len(ideal_mandatory_skills)}")
-
-        # Allow up to 2 missing mandatory skills if ideal mandatory skills are more than 5
-        # Allow up to 1 missing mandatory skill if ideal mandatory skills are 5 or less
-        if len(ideal_mandatory_skills) > 5 and len(missing_mandatory_skills) > 2:
-            fit_status = "Not Fit"
-            print(f"Final fit status: {fit_status} due to too many missing mandatory skills")
-            return {"Fit Status": fit_status}
-        elif len(ideal_mandatory_skills) <= 5 and len(missing_mandatory_skills) > 1:
-            fit_status = "Not Fit"
-            print(f"Final fit status: {fit_status} due to too many missing mandatory skills")
-            return {"Fit Status": fit_status}
 
         # Secondary skills match
         found_secondary_skills = list(secondary_skills.intersection(ideal_secondary_skills))
@@ -201,13 +166,26 @@ def evaluate_candidate(candidate_data):
 
         # Fit/Not Fit determination
         fit_status = "Fit"
-        if salary_alignment != "Aligned" and salary_alignment != "Adjusted":
+        if critical_match_count < len(ideal_critical_skills):
             fit_status = "Not Fit"
+            print(f"Final fit status: {fit_status} due to missing critical skills")
+        elif len(ideal_mandatory_skills) > 5 and len(missing_mandatory_skills) > 2:
+            fit_status = "Not Fit"
+            print(f"Final fit status: {fit_status} due to too many missing mandatory skills")
+        elif len(ideal_mandatory_skills) <= 5 and len(missing_mandatory_skills) > 1:
+            fit_status = "Not Fit"
+            print(f"Final fit status: {fit_status} due to too many missing mandatory skills")
+        elif salary_alignment != "Aligned" and salary_alignment != "Adjusted":
+            fit_status = "Not Fit"
+            print(f"Final fit status: {fit_status} due to salary misalignment")
         elif experience_alignment != "Aligned" and experience_alignment != "Adjusted":
             fit_status = "Not Fit"
+            print(f"Final fit status: {fit_status} due to experience misalignment")
         elif availability_alignment != "Aligned":
             fit_status = "Not Fit"
-        print(f"Final fit status: {fit_status}")
+            print(f"Final fit status: {fit_status} due to availability misalignment")
+        else:
+            print(f"Final fit status: {fit_status}")
 
         # Return the result as a dictionary
         result = {
