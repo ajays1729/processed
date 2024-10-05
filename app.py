@@ -121,8 +121,13 @@ def evaluate_candidate(candidate_data):
         mandatory_match_count = len(found_mandatory_skills)
         print(f"Mandatory skills match: {mandatory_match_count}/{len(ideal_mandatory_skills)}")
 
-        # Allow up to 2-4 missing mandatory skills
-        if len(missing_mandatory_skills) > 4:
+        # Allow up to 2 missing mandatory skills if ideal mandatory skills are more than 5
+        # Allow up to 1 missing mandatory skill if ideal mandatory skills are 5 or less
+        if len(ideal_mandatory_skills) > 5 and len(missing_mandatory_skills) > 2:
+            fit_status = "Not Fit"
+            print(f"Final fit status: {fit_status} due to too many missing mandatory skills")
+            return {"Fit Status": fit_status}
+        elif len(ideal_mandatory_skills) <= 5 and len(missing_mandatory_skills) > 1:
             fit_status = "Not Fit"
             print(f"Final fit status: {fit_status} due to too many missing mandatory skills")
             return {"Fit Status": fit_status}
