@@ -113,7 +113,25 @@ def evaluate_candidate(candidate_data):
         if critical_match_count < len(ideal_critical_skills):
             fit_status = "Not Fit"
             print(f"Final fit status: {fit_status} due to missing critical skills")
-            return {"Fit Status": fit_status}
+            result = {
+                "Fit Status": fit_status,
+                "Ideal Mandatory Skills": list(ideal_mandatory_skills),
+                "Found Mandatory Skills": found_mandatory_skills,
+                "Missing Mandatory Skills": missing_mandatory_skills,
+                "Mandatory Match": f"{mandatory_match_count}/{len(ideal_mandatory_skills)}",
+                "Ideal Critical Skills": list(ideal_critical_skills),
+                "Found Critical Skills": found_critical_skills,
+                "Missing Critical Skills": missing_critical_skills,
+                "Critical Match": f"{critical_match_count}/{len(ideal_critical_skills)}",
+                "Ideal Secondary Skills": list(ideal_secondary_skills),
+                "Found Secondary Skills": found_secondary_skills,
+                "Missing Secondary Skills": missing_secondary_skills,
+                "Secondary Match": f"{secondary_match_count}/{len(ideal_secondary_skills)}",
+                "Salary Alignment": salary_alignment,
+                "Experience Alignment": experience_alignment,
+                "Availability Alignment": availability_alignment
+            }
+            return result
 
         # Mandatory skills match
         found_mandatory_skills = list(mandatory_skills.intersection(ideal_mandatory_skills))
