@@ -43,13 +43,11 @@ def parse_doc(file_stream):
         tmp_doc_path = tmp_file.name
 
     try:
-        # Convert .doc to .docx using LibreOffice
         docx_path = convert_doc_to_docx(tmp_doc_path)
         if not docx_path or not os.path.exists(docx_path):
             print("Failed to convert .doc to .docx")
             return {"error": "Failed to convert .doc to .docx"}
 
-        # Parse the converted .docx file
         with open(docx_path, 'rb') as docx_file:
             return parse_docx(docx_file)
     finally:
@@ -61,38 +59,69 @@ def parse_doc(file_stream):
 def evaluate_candidate(candidate_data):
     try:
         print("Starting candidate evaluation...")
-        # Ensure the types of incoming data are as expected
+        # Handle nested JSON structure
         if isinstance(candidate_data, str):
-            candidate_data = json.loads(candidate_data)
+            # First JSON parse
+            data = json.loads(candidate_data)
+            # Check if it's a list with a json field
+            if isinstance(data, list) and len(data) > 0 and "json" in data[0]:
+                # Second JSON parse for the nested structure
+                candidate_data = json.loads(data[0]["json"])
+            else:
+                candidate_data = data
+        
         if not isinstance(candidate_data, dict):
-            raise ValueError("Candidate data must be a dictionary.")
+            raise ValueError("Candidate data must be a dictionary after parsing.")
 
-        # Remove trailing spaces from all keys in the candidate data
+        # Remove trailing spaces from all keys and handle space after key name
         candidate_data = {key.strip(): value for key, value in candidate_data.items()}
 
-        # Extract skills ensuring they are treated correctly as lists of strings
         def extract_skills(skill_data):
+            if not skill_data:
+                return set()
+            
             if isinstance(skill_data, list):
-                skills = set()
-                for item in skill_data:
-                    if isinstance(item, str):
-                        # Split skills by comma and strip whitespace
-                        skills.update(skill.strip() for skill in item.split(',') if skill.strip())
-                return skills
-            elif isinstance(skill_data, str):
-                # Split skills by comma and strip whitespace
-                return set(skill.strip() for skill in skill_data.split(',') if skill.strip())
-            return set()
+                # Join all items and split by commas to handle nested lists
+                skills_text = ", ".join(str(item) for item in skill_data)
+            else:
+                skills_text = str(skill_data)
+            
+            # Split by commas and clean up each skill
+            skills = set()
+            for skill in skills_text.split(','):
+                cleaned_skill = skill.strip()
+                if cleaned_skill:
+                    skills.add(cleaned_skill)
+            return skills
 
-        ideal_mandatory_skills = extract_skills(candidate_data.get("Ideal Mandatory Skills", ""))
-        ideal_critical_skills = extract_skills(candidate_data.get("Ideal Critical Skills", ""))
-        ideal_secondary_skills = extract_skills(candidate_data.get("Ideal Secondary Skills", ""))
+        # Handle both variations of key names (with and without space)
+        ideal_mandatory_skills = extract_skills(
+            candidate_data.get("Ideal Mandatory Skills") or 
+            candidate_data.get("Ideal Mandatory Skills ")
+        )
+        ideal_critical_skills = extract_skills(
+            candidate_data.get("Ideal Critical Skills") or 
+            candidate_data.get("Ideal Critical Skills ")
+        )
+        ideal_secondary_skills = extract_skills(
+            candidate_data.get("Ideal Secondary Skills") or 
+            candidate_data.get("Ideal Secondary Skills ")
+        )
 
-        mandatory_skills = extract_skills(candidate_data.get("Mandatory Skills", ""))
-        critical_skills = extract_skills(candidate_data.get("Critical Skills", ""))
-        secondary_skills = extract_skills(candidate_data.get("Secondary Skills", ""))
+        mandatory_skills = extract_skills(
+            candidate_data.get("Mandatory Skills") or 
+            candidate_data.get("Mandatory Skills ")
+        )
+        critical_skills = extract_skills(
+            candidate_data.get("Critical Skills") or 
+            candidate_data.get("Critical Skills ")
+        )
+        secondary_skills = extract_skills(
+            candidate_data.get("Secondary Skills") or 
+            candidate_data.get("Secondary Skills ")
+        )
 
-        # Debug statements to print extracted skills
+        # Debug statements
         print(f"Ideal Mandatory Skills: {ideal_mandatory_skills}")
         print(f"Candidate Mandatory Skills: {mandatory_skills}")
         print(f"Ideal Critical Skills: {ideal_critical_skills}")
@@ -100,34 +129,32 @@ def evaluate_candidate(candidate_data):
         print(f"Ideal Secondary Skills: {ideal_secondary_skills}")
         print(f"Candidate Secondary Skills: {secondary_skills}")
 
-        if not all(isinstance(skill, str) for skill in mandatory_skills.union(critical_skills, secondary_skills)):
-            raise ValueError("Skills must be provided as strings.")
+        # Skill matching with case-insensitive comparison
+        def case_insensitive_intersection(set1, set2):
+            return {s1 for s1 in set1 if any(s1.lower() == s2.lower() for s2 in set2)}
 
-        # Critical skills match
-        found_critical_skills = list(critical_skills.intersection(ideal_critical_skills))
-        missing_critical_skills = list(ideal_critical_skills - critical_skills)
+        def case_insensitive_difference(set1, set2):
+            return {s1 for s1 in set1 if not any(s1.lower() == s2.lower() for s2 in set2)}
+
+        found_critical_skills = list(case_insensitive_intersection(critical_skills, ideal_critical_skills))
+        missing_critical_skills = list(case_insensitive_difference(ideal_critical_skills, critical_skills))
         critical_match_count = len(found_critical_skills)
-        print(f"Critical skills match: {critical_match_count}/{len(ideal_critical_skills)}")
 
-        # Mandatory skills match
-        found_mandatory_skills = list(mandatory_skills.intersection(ideal_mandatory_skills))
-        missing_mandatory_skills = list(ideal_mandatory_skills - mandatory_skills)
+        found_mandatory_skills = list(case_insensitive_intersection(mandatory_skills, ideal_mandatory_skills))
+        missing_mandatory_skills = list(case_insensitive_difference(ideal_mandatory_skills, mandatory_skills))
         mandatory_match_count = len(found_mandatory_skills)
-        print(f"Mandatory skills match: {mandatory_match_count}/{len(ideal_mandatory_skills)}")
 
-        # Secondary skills match
-        found_secondary_skills = list(secondary_skills.intersection(ideal_secondary_skills))
-        missing_secondary_skills = list(ideal_secondary_skills - secondary_skills)
+        found_secondary_skills = list(case_insensitive_intersection(secondary_skills, ideal_secondary_skills))
+        missing_secondary_skills = list(case_insensitive_difference(ideal_secondary_skills, secondary_skills))
         secondary_match_count = len(found_secondary_skills)
-        print(f"Secondary skills match: {secondary_match_count}/{len(ideal_secondary_skills)}")
 
-        # Salary alignment check
-        current_salary_high_range = candidate_data.get("Salary_High Range")
-        expected_salary = candidate_data.get("Expected Salary")
+        # Salary alignment check with proper type conversion
+        current_salary_high_range = float(candidate_data.get("Salary_High Range", 0))
+        expected_salary = float(candidate_data.get("Expected Salary", 0))
 
         salary_alignment = "Not Available"
-        if current_salary_high_range is not None and expected_salary is not None:
-            if expected_salary <= 100:
+        if current_salary_high_range > 0 and expected_salary > 0:
+            if expected_salary <= 100:  # Convert if salary is in lakhs
                 expected_salary *= 100000
             if expected_salary <= current_salary_high_range:
                 salary_alignment = "Aligned"
@@ -137,58 +164,53 @@ def evaluate_candidate(candidate_data):
                     salary_alignment = "Adjusted"
                 else:
                     salary_alignment = "Not Aligned"
-        print(f"Salary alignment: {salary_alignment}")
 
-        # Years of experience alignment check
-        ideal_years_of_experience = candidate_data.get("Ideal Years of Experience")
-        years_of_experience = candidate_data.get("Years of Experience")
+        # Years of experience alignment check with proper type conversion
+        ideal_years_of_experience = float(candidate_data.get("Ideal Years of Experience", 0))
+        years_of_experience = float(candidate_data.get("Years of Experience", 0))
 
         experience_alignment = "Not Available"
-        if ideal_years_of_experience is not None and years_of_experience is not None:
+        if ideal_years_of_experience > 0 and years_of_experience > 0:
             if years_of_experience >= ideal_years_of_experience:
                 experience_alignment = "Aligned"
             elif years_of_experience >= ideal_years_of_experience - 1:
                 experience_alignment = "Adjusted"
             else:
                 experience_alignment = "Not Aligned"
-        print(f"Years of experience alignment: {experience_alignment}")
 
-        # Availability alignment check
-        available_in_days = candidate_data.get("Available In Number of Days")
-
+        # Availability alignment check with proper type conversion
+        available_in_days = float(candidate_data.get("Available In Number of Days", -1))
         availability_alignment = "Not Available"
-        if available_in_days is not None:
+        if available_in_days >= 0:
             if 0 <= available_in_days <= 30:
                 availability_alignment = "Aligned"
             else:
                 availability_alignment = "Not Aligned"
-        print(f"Availability alignment: {availability_alignment}")
 
         # Fit/Not Fit determination
         fit_status = "Fit"
+        fit_reason = "Candidate meets all requirements"
+
         if critical_match_count < len(ideal_critical_skills):
             fit_status = "Not Fit"
-            print(f"Final fit status: {fit_status} due to missing critical skills")
+            fit_reason = "Missing critical skills"
         elif len(ideal_mandatory_skills) > 5 and len(missing_mandatory_skills) > 2:
             fit_status = "Not Fit"
-            print(f"Final fit status: {fit_status} due to too many missing mandatory skills")
+            fit_reason = "Too many missing mandatory skills (more than 2 missing from 5+ required)"
         elif len(ideal_mandatory_skills) <= 5 and len(missing_mandatory_skills) > 1:
             fit_status = "Not Fit"
-            print(f"Final fit status: {fit_status} due to too many missing mandatory skills")
-        elif salary_alignment != "Aligned" and salary_alignment != "Adjusted":
+            fit_reason = "Too many missing mandatory skills (more than 1 missing from 5 or fewer required)"
+        elif salary_alignment not in ["Aligned", "Adjusted"]:
             fit_status = "Not Fit"
-            print(f"Final fit status: {fit_status} due to salary misalignment")
-        elif experience_alignment != "Aligned" and experience_alignment != "Adjusted":
+            fit_reason = "Salary expectations not aligned"
+        elif experience_alignment not in ["Aligned", "Adjusted"]:
             fit_status = "Not Fit"
-            print(f"Final fit status: {fit_status} due to experience misalignment")
+            fit_reason = "Experience level not aligned"
         elif availability_alignment != "Aligned":
             fit_status = "Not Fit"
-            print(f"Final fit status: {fit_status} due to availability misalignment")
-        else:
-            print(f"Final fit status: {fit_status}")
+            fit_reason = "Availability not aligned"
 
-        # Return the result as a dictionary
-        result = {
+        return {
             "Ideal Mandatory Skills": list(ideal_mandatory_skills),
             "Found Mandatory Skills": found_mandatory_skills,
             "Missing Mandatory Skills": missing_mandatory_skills,
@@ -204,18 +226,13 @@ def evaluate_candidate(candidate_data):
             "Salary Alignment": salary_alignment,
             "Experience Alignment": experience_alignment,
             "Availability Alignment": availability_alignment,
-            "Fit Status": fit_status
+            "Fit Status": fit_status,
+            "Fit Reason": fit_reason
         }
 
-        print("Candidate evaluation completed.")
-        return result
-
-    except ValueError as e:
-        print(f"ValueError during candidate evaluation: {e}")
+    except (ValueError, json.JSONDecodeError) as e:
+        print(f"Error during candidate evaluation: {str(e)}")
         return {"Error": str(e)}
-    except json.JSONDecodeError as e:
-        print(f"JSONDecodeError during candidate evaluation: {e}")
-        return {"Error": f"Invalid JSON format: {str(e)}"}
 
 @app.route('/parse', methods=['POST'])
 def parse_document():
